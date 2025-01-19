@@ -15,8 +15,8 @@ constexpr float GRAVITY = 3e2f;
 constexpr float DIST_EPS = 1e-4f;
 constexpr float COLL_EPS = 1.0f;
 
-constexpr int WIDTH = 1000;
-constexpr int HEIGHT = 600;
+constexpr int WIDTH = 960;
+constexpr int HEIGHT = 540;
 
 struct Body {
     float mass;
@@ -67,7 +67,8 @@ static std::vector<Body> get_random_system(std::default_random_engine& eng, int 
         const float mean_rad = (distance / max_rad * 0.4f + 0.2f) * sun_radius;
         std::normal_distribution rad_dist(mean_rad, mean_rad * 0.2f);
         body.radius = rad_dist(eng);
-        body.mass = body.radius * body.radius / density;
+        // pretend planets are much smaller for visual reasons
+        body.mass = body.radius * body.radius * density * 1e-2f;
 
         Vector2 vel_dir = Vector2Rotate(pos_dir, PI / 2.0f);
         body.vel = vel_dir * std::sqrt(GRAVITY * SOLAR_MASS / distance);
@@ -80,7 +81,7 @@ int main() {
     std::random_device r;
     std::default_random_engine e(r());
     auto bodies = get_random_system(e, 2, 15);
-    float sys_density = bodies[0].mass / (bodies[0].radius * bodies[0].radius);
+    float sys_density = bodies[0].mass / (bodies[0].radius * bodies[0].radius) * 1e-2f;
 
     std::vector<Vector2> acc(bodies.size());
     std::optional<Body> new_body {};
@@ -108,9 +109,12 @@ int main() {
             } else if (reset_btn_state == HOVER) {
                 reset_btn_state = DOWN;
             } else {
+                float rad_sum = std::accumulate(bodies.begin(), bodies.end(), 0.0f,
+                                                [](float part, Body b) { return part + b.radius; });
+                float mean_rad = bodies.size() == 0.0f ? 20.0f : rad_sum / bodies.size();
                 new_body = {
-                    .mass = 10.0f,
-                    .radius = 20.0f,
+                    .mass = mean_rad * mean_rad * sys_density,
+                    .radius = mean_rad,
                     .pos = mouse_pos,
                     .vel = {},
                     .color = get_random_color(e),
@@ -119,7 +123,7 @@ int main() {
         } else if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             if (reset_btn_state == HOVER) {
                 bodies = get_random_system(e, 2, 15);
-                sys_density = bodies[0].mass / (bodies[0].radius * bodies[0].radius);
+                sys_density = bodies[0].mass / (bodies[0].radius * bodies[0].radius) * 1e-2f;
                 acc.clear();
                 acc.resize(bodies.size());
                 reset_btn_state = NONE;
